@@ -8,6 +8,4 @@ docker run -it --rm \
     -v /home/${USER}:/home/${USER}\
     -v /media/${USER}:/media/${USER} \
     --name ${USER}.tong3 \
-    mmdet-pytorch1.9-cuda111:PVTmmcv1.6
-
-#mmdet-pytorch1.9-cuda111:latest
+    mmdet-pytorch2.9-cuda130:latest

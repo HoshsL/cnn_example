@@ -13,7 +13,7 @@ transform = transforms.Compose([
     transforms.Normalize((0.5,), (0.5,))
 ])
 train_dataset = datasets.MNIST('data', train=True, download=True, transform=transform)
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4)
+train_loader = DataLoader(train_dataset, batch_size=4096, shuffle=True, num_workers=4)
 
 # 准备模型
 input_size = 28*28

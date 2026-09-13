@@ -42,17 +42,26 @@ class LeNet5(nn.Module):
 # 检查GPU是否可用
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# 定义数据预处理和加载器
-transform = transforms.Compose([
+# 定义训练集数据增强和预处理
+train_transform = transforms.Compose([
+    transforms.Resize((28, 28)),
+    transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,))
+])
+
+# 测试集只做预处理，不进行数据增强
+test_transform = transforms.Compose([
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
-train_dataset = datasets.MNIST('data', train=True, download=True, transform=transform)
+
+train_dataset = datasets.MNIST('data', train=True, download=True, transform=train_transform)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-test_dataset = datasets.MNIST('data', train=False, download=True, transform=transform)
-test_loader = DataLoader(train_dataset, batch_size=64, shuffle=False)
+test_dataset = datasets.MNIST('data', train=False, download=True, transform=test_transform)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 # 准备模型
 input_size = 28*28
@@ -68,6 +77,8 @@ model=model.to(device = device,dtype = torch.float32)
 # 定义损失函数和优化器
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.005)
+# 每 5 轮将学习率衰减为原来的 0.1
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
 # 创建CUDA事件
 # start_event = torch.cuda.Event(enable_timing=True)
@@ -82,6 +93,7 @@ total_time = 0.0
 num_epochs = 10
 
 for epoch in range(num_epochs):
+    model.train()
     start = time.time()
     for images, labels in tqdm(train_loader):
         # 将数据传输到GPU
@@ -118,6 +130,10 @@ for epoch in range(num_epochs):
 # 计算每张图片的平均处理时间
 # avg_time_per_image = total_time / total_images
 
+    scheduler.step()
+    print(f"learning rate: {optimizer.param_groups[0]['lr']:.6f}")
+
+    model.eval()
     with torch.no_grad():
         correct = 0
         total = 0

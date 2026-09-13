@@ -2,6 +2,7 @@
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
+from pathlib import Path
 from model import LeNet
  
 def main():
@@ -17,22 +18,30 @@ def main():
     net = LeNet()
     # 用下述函数载入刚刚训练好的网络模型
     net.load_state_dict(torch.load('Lenet.pth'))
- 
-    # 导入要测试的图像，用PIL载入
-    #im = Image.open('img/dog1.jpeg')
-    #im = Image.open('img/cat1.jpeg')
-    #im = Image.open('img/plane2.jpeg')
-    im = Image.open('img/ship1.jpg')
-    im = transform(im)  # [C, H, W]
-    # 对数据增加一个新维度，因为tensor的参数是[batch, channel, height, width]
-    im = torch.unsqueeze(im, dim=0)  # [N, C, H, W]
+    net.eval()
+
+    # 遍历 img 目录下的图像，并组成一个 batch
+    image_dir = Path('img')
+    image_paths = sorted(
+        path for path in image_dir.iterdir()
+        if path.is_file() and path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.bmp'}
+    )
+    if not image_paths:
+        raise FileNotFoundError(f'No images found in {image_dir}')
+
+    images = []
+    for image_path in image_paths:
+        with Image.open(image_path) as image:
+            images.append(transform(image.convert('RGB')))
+    image_batch = torch.stack(images)  # [N, C, H, W]
  
     with torch.no_grad():
-        outputs = net(im)
-        predict = torch.max(outputs, dim=1)[1].data.numpy()
+        outputs = net(image_batch)
+        predicts = torch.max(outputs, dim=1)[1].numpy()
         # 预测结果也可用softmax，输出十个概率，输出结果中最大概率值对应的索引即为预测标签的索引
         # predict = torch.softmax(outputs, dim=1)
-    print("class:",classes[int(predict)])
+    for image_path, predict in zip(image_paths, predicts):
+        print(f'{image_path.name}: {classes[int(predict)]}')
  
  
 if __name__ == '__main__':

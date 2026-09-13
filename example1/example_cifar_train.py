@@ -11,9 +11,14 @@ import matplotlib.pyplot as plt
 # ref: https://blog.csdn.net/baidu_27066207/article/details/115328376
 
 def main():
-    # 对输入的图像数据做预处理
-    # 即由shape (H x W x C) in the range [0, 255] → shape (C x H x W) in the range [0.0, 1.0]
-    transform = transforms.Compose(
+    # 训练集数据增强：随机裁剪和随机水平翻转
+    train_transform = transforms.Compose(
+        [transforms.RandomCrop(32, padding=4),
+         transforms.RandomHorizontalFlip(),
+         transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    val_transform = transforms.Compose(
         [transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
  
@@ -22,7 +27,7 @@ def main():
     train_set = torchvision.datasets.CIFAR10(root='./data', # 数据集存放目录
                                              train=True,    # 表示是数据集中的训练集
                                              download=True, # 第一次运行时为True，去自动下载数据集，下载完成后改为False
-                                             transform=transform) # 预处理过程
+                                             transform=train_transform) # 预处理过程
     # 加载训练集，实际过程需要分批次（batch）训练
     train_loader = torch.utils.data.DataLoader(train_set,       # 导入的训练集
                                                batch_size=36,   # 每批训练的样本数
@@ -32,12 +37,12 @@ def main():
     # 10000张验证图片
     # 第一次使用时要将download设置为True才会自动去下载数据集
     val_set = torchvision.datasets.CIFAR10(root='./data', train=False,  # 表示是数据集中的验证集
-                                           download=False, transform=transform)
+                                           download=False, transform=val_transform)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=5000,  # 每批用于验证的样本数量
                                              shuffle=False, num_workers=0)
     # 获取测试集中的图像和标签，用于accuracy计算
     val_data_iter = iter(val_loader)
-    val_image, val_label = val_data_iter.next()
+    val_image, val_label = next(val_data_iter)
  
     classes = ('plane', 'car', 'bird', 'cat',
                'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -51,8 +56,10 @@ def main():
     net = LeNet()                                       # 定义训练所用的网络模型
     loss_function = nn.CrossEntropyLoss()               # 定义损失函数（这里为交叉熵损失函数）
     optimizer = optim.Adam(net.parameters(), lr=0.001)  # 定义优化器（训练参数，学习率）
+    # 每 10 轮将学习率衰减为原来的 0.1
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
  
-    for epoch in range(5):  # loop over the dataset multiple times
+    for epoch in range(30):  # loop over the dataset multiple times
         # 一个epoch即对整个训练集进行一次训练
         running_loss = 0.0
         time_start = time.perf_counter()
@@ -84,6 +91,10 @@ def main():
                     # 打印耗时
                     print('%f s' %(time.perf_counter()-time_start))
                     running_loss = 0.0
+
+        # 每轮训练结束后更新学习率
+        scheduler.step()
+        print('learning_rate: %.6f' % optimizer.param_groups[0]['lr'])
  
     print('Finished Training')
  
