@@ -47,14 +47,14 @@ train_transform = transforms.Compose([
     transforms.Resize((28, 28)),
     transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
     transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
+    transforms.Normalize((0.1307,), (0.3081,))
 ])
 
 # 测试集只做预处理，不进行数据增强
 test_transform = transforms.Compose([
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
+    transforms.Normalize((0.1307,), (0.3081,))
 ])
 
 train_dataset = datasets.MNIST('data', train=True, download=True, transform=train_transform)
