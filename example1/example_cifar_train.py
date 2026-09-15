@@ -26,7 +26,7 @@ def main():
     # 第一次使用时要将download设置为True才会自动去下载数据集
     train_set = torchvision.datasets.CIFAR10(root='./data', # 数据集存放目录
                                              train=True,    # 表示是数据集中的训练集
-                                             download=True, # 第一次运行时为True，去自动下载数据集，下载完成后改为False
+                                             download=False, # 第一次运行时为True，去自动下载数据集，下载完成后改为False
                                              transform=train_transform) # 预处理过程
     # 加载训练集，实际过程需要分批次（batch）训练
     train_loader = torch.utils.data.DataLoader(train_set,       # 导入的训练集
@@ -55,9 +55,15 @@ def main():
  
     net = LeNet()                                       # 定义训练所用的网络模型
     loss_function = nn.CrossEntropyLoss()               # 定义损失函数（这里为交叉熵损失函数）
-    optimizer = optim.Adam(net.parameters(), lr=0.001)  # 定义优化器（训练参数，学习率）
-    # 每 10 轮将学习率衰减为原来的 0.1
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    optimizer = optim.AdamW(net.parameters(), lr=0.001, weight_decay=1e-4)
+    # 在 30 轮内平滑降低学习率
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30, eta_min=1e-5)
+
+    # 保存验证准确率最高时的模型参数
+    best_accuracy = 0.0
+    best_epoch = 0
+    best_step = 0
+    best_save_path = './Lenet.pth'
  
     for epoch in range(30):  # loop over the dataset multiple times
         # 一个epoch即对整个训练集进行一次训练
@@ -88,6 +94,16 @@ def main():
                     # 打印epoch，step，loss，accuracy
                     print('[%d, %5d] train_loss: %.3f  test_accuracy: %.3f' %
                           (epoch + 1, step + 1, running_loss / 500, accuracy))
+
+                    # 只保存当前准确率最高的模型参数
+                    if accuracy > best_accuracy:
+                        best_accuracy = accuracy
+                        best_epoch = epoch + 1
+                        best_step = step + 1
+                        torch.save(net.state_dict(), best_save_path)
+                        print('保存最优模型：accuracy=%.3f, epoch=%d, step=%d' %
+                              (best_accuracy, best_epoch, best_step))
+
                     # 打印耗时
                     print('%f s' %(time.perf_counter()-time_start))
                     running_loss = 0.0
@@ -97,10 +113,8 @@ def main():
         print('learning_rate: %.6f' % optimizer.param_groups[0]['lr'])
  
     print('Finished Training')
- 
-    # 保存训练得到的参数模型
-    save_path = './Lenet.pth'
-    torch.save(net.state_dict(), save_path)
+    print('Best accuracy: %.3f (epoch %d, step %d)' %
+          (best_accuracy, best_epoch, best_step))
  
 if __name__ == '__main__':
     main()
